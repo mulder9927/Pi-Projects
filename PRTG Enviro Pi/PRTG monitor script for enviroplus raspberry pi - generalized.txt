@@ -1,0 +1,98 @@
+#Written for Python3
+# ___ ___ _____ ___
+#| _ \ _ \_   _/ __|
+#|  _/   / | || (_ |
+#|_| |_|_\ |_| \___|
+# Environmental Monitor via RaspberryPi+ enviroplus
+# ================================
+# This script will monitor environmental values in a server room, with a Raspberry PI
+#
+#
+# Version History
+# ----------------------------
+# 05/05/2017    1.0      initial release
+# 12/15/2021    1.5      Modified for EnviroPlus - without gas sensor
+# # # # # # # # # # # # # # # # # # # # # # # # # #
+
+import time
+import requests
+#from envirophat import weather, light
+from bme280 import BME280
+import json
+try:
+    # Transitional fix for breaking change in LTR559
+    from ltr559 import LTR559
+    ltr559 = LTR559()
+except ImportError:
+    import ltr559
+try:
+    from smbus2 import SMBus
+except ImportError:
+    from smbus import SMBus
+
+bus = SMBus(1)
+bme280 = BME280(i2c_dev=bus) # BME280 temperature, humidity and pressure sensor
+
+
+
+#add ipaddress of the PRTG server
+prtg_host = '%IP-addr%'
+prtg_host_port = '%PORT%'
+#Generate a sensor token for prtg to put here
+prtg_sensor_token = '%SENSOR-TOKEN%'
+interval = 60
+
+
+def get_values():
+    temperature = bme280.get_temperature()
+    humidity = bme280.get_humidity()
+    pressure = bme280.get_pressure()
+    amblight = ltr559.get_lux()
+
+    json_response = {
+        "prtg": {
+            "result": [
+                {
+                    "channel": "temperature",
+                    "float": 1,
+                    "value": temperature
+                },
+                {
+                    "channel": "humidity",
+                    "float": 1,
+                    "value": humidity
+                },
+                {
+                    "channel": "pressure",
+                    "float": 1,
+                    "value": pressure
+                },
+                {
+                    "channel": "ambient light",
+                    "float": 1,
+                    "value": amblight
+                }
+            ]
+        }
+    }
+    return json_response
+
+
+try:
+    while True:
+        try:
+            json_response = get_values()
+            # print output for debugging
+            # print(json_response)
+            json_string = str(json_response)
+            json_string = str.replace(json_string, '\'', '\"')
+            prtg_request_URL = 'http://' + prtg_host + ':' + prtg_host_port + '/' + prtg_sensor_token + '?content=' + json_string
+            # print(prtg_request_URL)
+            request = requests.get(prtg_request_URL)
+            # print(request.status_code)
+        except:
+            pass
+        time.sleep(interval)
+
+except KeyboardInterrupt:
+    pass

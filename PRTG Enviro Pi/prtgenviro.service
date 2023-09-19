@@ -1,0 +1,12 @@
+[Unit]
+Description=Enviro+ web service
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/etc/EnviroPlusWeb
+ExecStart=sudo python3 /etc/EnviroPlusWeb/Enviro+prtg.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
